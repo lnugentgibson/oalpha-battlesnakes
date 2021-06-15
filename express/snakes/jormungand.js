@@ -14,7 +14,14 @@ const {
   GameState
 } = require('./snakes/common.js');
 
-// Store and maintains partitions of the board
+// Store and maintains partitions of the board.
+//
+// Metadata is stored for each point on the board. Each cell refrences an owning
+// partition as well as a count of the neighboring cells in the same partition.
+// This is used to determine the edges and bridges of a partition. If a cell has
+// less than 8 neighnors it is an edge. If a cell has exactly two neighbors it
+// is a bridge. If a bridge is removed from a partition it could potentially
+// have been split into multiple partitions.
 function GamePartitions(state) {
   let {
     width,
@@ -58,10 +65,15 @@ function GamePartitions(state) {
     }))
   }));
   
-  // a list of cells to check on the next step 
+  // a list of cells to check on the next step
+  // between steps only the following cells should change partitions
+  //   snake tails: these need to be added to keyPoints each step
+  //   snake heads: these do not need to be stored, they are supplied each step
+  //   dead snakes: TODO
   var keyPoints = [];
   
-  // 
+  // updates the specified cell to belong to the specified partition and updates
+  // neighboring cells
   function moveCell(cell, index) {
     let {row, col} = cell;
     var partition = partitions[index];
@@ -182,6 +194,7 @@ module.exports = function SetupSnake(app, upload) {
   
   // updates GamePartitions object and returns weighted random direction to /move
   app.post(`/${prefix}/move`, upload.array(), function (req, res) {
+    // parse game state
     var state = new GameState(req.body);
     let {
       gameId,
@@ -192,21 +205,13 @@ module.exports = function SetupSnake(app, upload) {
       head,
       length
     } = state;
+    
+    // get GamePartitions object
     var game = games[gameId + '_' + snakeId];
     game.states.push(state);
     game.bodies.push(state.body);
-    if(!head) {
-      console.error('head is null');
-      console.error(JSON.stringify(req.body.you, null, 2));
-      res.send({
-        "move": 'right',
-        "shout": "I am moving up!"
-      });
-      return;
-    }
     
-    //var out = {};
-    
+    // check if each key point should stay in its previous partition or move
     game.keyPoints.forEach(cell => {
       var partition = game.partitions[cell.partition];
       var id = partition.snake;
@@ -239,15 +244,19 @@ module.exports = function SetupSnake(app, upload) {
         }
       }
     });
+    // TODO: clear keyPoints and add current tails
     
     var moves = ['right','up','left','down'];
+    
+    // calculate distance to walls
     var space = [
       /* right */ width - head.x - 1,
       /* up */    height - head.y - 1,
       /* left */  head.x,
       /* down */  head.y
     ];
-    // Eliminate moves that exit board and increase chance of moving towards center
+    
+    // initialize weights
     var weight = space.map(s => Math.sqrt(s));
     
     // Eliminate moves that collide with a snake (including self)
@@ -290,7 +299,11 @@ module.exports = function SetupSnake(app, upload) {
         weight[3] = 0;
       }
     });
+    
+    // claculate sum of weights
     var w = weight.reduce((s,c) => s + c, 0);
+    
+    // choose move
     var r = Math.random() * w;
     var i = 0;
     while(r > weight[i]) {
@@ -298,13 +311,15 @@ module.exports = function SetupSnake(app, upload) {
       i++;
     }
     var move = moves[i];
+    
+    // store move
     game.moves.push(move);
+    
+    // send response
     res.send({
       "move": move,
       "shout": "I am moving up!"
     });
-    //console.log(req.body);
-    //console.log(Object.keys(req.body));
   });
   
   // writes state objects to file
