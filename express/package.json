@@ -1,0 +1,19 @@
+{
+  "name": "battlesnake-one-wolf-com",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^1.19.0",
+    "express": "^4.17.1",
+    "lodash": "^4.17.21",
+    "multer": "^1.4.2",
+    "sequelize": "^6.6.2",
+    "sqlite3": "^5.0.2"
+  }
+}
