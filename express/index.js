@@ -330,9 +330,18 @@ function GamePartitions(state) {
     snakes
   } = state;
   
+  // stores the data sent by Battlesnake
   var states = [state];
+  // stores only the data about this snakes' body
   var bodies = [state.body];
+  // stores only the move response sent to Battlesnake
   var moves = [];
+  
+  // list of partitions of the board
+  // There is initially 1 partition for empty space
+  // A partition is added for each snake corresponding to the cells taken up by that snake
+  // Partitions corresponding to empty space will have an undefined snake field
+  // Snake partitions will have the snake's id as the value of the snake field
   var partitions = [
     {
       index: 0,
@@ -340,7 +349,11 @@ function GamePartitions(state) {
       size: width * height
     }
   ];
+  
+  // A map from snake id to the corresponding partition
   var partitionsBySnakeId = {};
+  
+  // a grid containing every point on the board
   var grid = _.times(height, i => ({
     row: i,
     cells: _.times(width, j => ({
@@ -352,8 +365,11 @@ function GamePartitions(state) {
       neighbors: i == 0 || i == height - 1 ? (j == 0 || j == width - 1 ? 3 : 5) : (j == 0 || j == width - 1 ? 5 : 8)
     }))
   }));
+  
+  // a list of cells to check on the next step 
   var keyPoints = [];
   
+  // 
   function moveCell(cell, index) {
     let {row, col} = cell;
     var partition = partitions[index];
@@ -510,7 +526,13 @@ var games = {};
               if(p.snake != undefined) openPartitions[p.index] = p;
             }
           var indices = Object.keys(openPartitions);
-          if(indices.length == 0) {}
+          if(indices.length == 0) {
+            var np = {
+              index: game.partitions.length,
+              snake: undefined
+            };
+            game.partitions.push(np);
+          }
           else if(indices.length > 1) {}
           else {
             game.moveCell(cell, indices[0]);
