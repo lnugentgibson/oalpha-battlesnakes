@@ -5,6 +5,7 @@
     <title>Title</title>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script src="https://unpkg.com/konva@8/konva.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
 
 </head>
 <body>
@@ -13,45 +14,76 @@
 
 <script>
 
-  // Make a request for a user with a given ID
-  axios.get('http://127.0.0.1:8080', {
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET,PUT,POST,DELETE,PATCH,OPTIONS'
-    }
-  })
-    .then(function (response) {
-      // handle success
-      console.log(response)
+  const colors = ['lightgrey', 'lightgreen', 'pink', 'darkgreen']
+  const endpoint = 'http://127.0.0.1:8080'
+
+  function initialBoard () {
+    // Make a request for a user with a given ID
+    axios.get(endpoint, {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET,PUT,POST,DELETE,PATCH,OPTIONS'
+      }
     })
-    .catch(function (error) {
-      // handle error
-      console.log(error)
+      .then(function (response) {
+        // handle success
+        console.log(response)
+        draw(response.data.board)
+      })
+
+      .catch(function (error) {
+        // handle error
+        console.log(error)
+      })
+  }
+
+  function next () {
+    // Make a request for a user with a given ID
+    axios.get(endpoint + '/next', {
+
     })
-    .then(function () {
-      // always executed
+      .then(function (response) {
+        // handle success
+        console.log(response)
+        draw(response.data.board)
+      })
+
+      .catch(function (error) {
+        // handle error
+        console.log(error)
+      })
+  }
+
+  function draw (data) {
+    var stage = new Konva.Stage({
+      container: 'container',
+      width: 500,
+      height: 500,
+    })
+    var layer = new Konva.Layer()
+
+    _.forEach(data, function (row, i) {
+      _.forEach(row, function (s, j) {
+        var rect1 = new Konva.Rect({
+          x: j * 50,
+          y: i * 50,
+          width: 50,
+          height: 50,
+          fill: colors[s]
+        })
+        // add the shape to the layer
+        layer.add(rect1)
+      })
     })
 
-  var stage = new Konva.Stage({
-        container: 'container',
-        width: 500,
-        height: 500,
-      });
+    stage.add(layer)
+  }
 
-  var layer = new Konva.Layer();
+  initialBoard();
 
-var rect1 = new Konva.Rect({
-        x: 0,
-        y: 0,
-        width: 50,
-        height: 50,
-        fill: 'green'
-      });
-      // add the shape to the layer
-      layer.add(rect1);
-
-      stage.add(layer);
 
 </script>
 </body>
+
+<button onclick="next()">Next</button>
 </html>
