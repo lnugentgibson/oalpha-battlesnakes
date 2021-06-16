@@ -46,7 +46,7 @@ function GameState(data) {
     width: { get: () => width, enumerable: true },
     height: { get: () => height, enumerable: true },
     snakes: { get: () => snakes, enumerable: true },
-    food: { get: () => (i => food[i]), enumerable: true },
+    food: { get: () => food, enumerable: true },
     hazard: { get: () => (i => hazards[i]), enumerable: true },
     you: { get: () => you, enumerable: true },
     snakeId: { get: () => you.id, enumerable: true },

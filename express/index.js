@@ -22,7 +22,11 @@ require('./snakes/smarterrandom.js')(app, upload);
 // Add smarterrandom snake
 require('./snakes/evensmarterrandom.js')(app, upload);
 // Add jormungand snake
-require('./snakes/evensmarterrandom.js')(app, upload);
+require('./snakes/jormungand.js')(app, upload);
+// Add hydra snake
+require('./snakes/hydra.js')(app, upload);
+// Add medusa snake
+require('./snakes/medusa.js')(app, upload);
 
 var server = require('http').createServer(app);
 server.listen(port);

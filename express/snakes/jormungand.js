@@ -12,7 +12,7 @@ const _ = require('lodash');
 const {
   //SnakeState,
   GameState
-} = require('./snakes/common.js');
+} = require('./common.js');
 
 // Store and maintains partitions of the board.
 //
@@ -45,7 +45,8 @@ function GamePartitions(state) {
     {
       index: 0,
       snake: undefined,
-      size: width * height
+      size: width * height,
+      cell: {}
     }
   ];
   
@@ -64,12 +65,18 @@ function GamePartitions(state) {
       neighbors: i == 0 || i == height - 1 ? (j == 0 || j == width - 1 ? 3 : 5) : (j == 0 || j == width - 1 ? 5 : 8)
     }))
   }));
+  //var index = {};
+  //grid.forEach(row => {
+  //  row.cells.forEach(cell => {
+  //    partitions[0].cells[cell.index] = cell;
+  //  });
+  //});
   
   // a list of cells to check on the next step
   // between steps only the following cells should change partitions
   //   snake tails: these need to be added to keyPoints each step
   //   snake heads: these do not need to be stored, they are supplied each step
-  //   dead snakes: TODO
+  //   dead snakes: these are also handled in move
   var keyPoints = [];
   
   // updates the specified cell to belong to the specified partition and updates
@@ -98,9 +105,40 @@ function GamePartitions(state) {
         }
       
       previous.size--;
+      delete previous.cells[cell.index];
       cell.partition = partition.index;
+      partition.size++;
+      partition.cells[cell.index] = cell;
     }
   }
+  // adds the specified cell to a neighboring empty partition. If none exists a
+  // new one will be created. If multiple exist, they will be merged
+  function reclaimCell(cell) {
+    var openPartitions = {};
+    for(var a = -1; a < 2; a++)
+      for(var b = -1; b < 2; b++) {
+        if(a == 0 && b == 0) continue;
+        var R = grid[cell.row + a];
+        if(!R) continue;
+        var neighbor = R.cells[cell.col + b];
+        if(!neighbor) continue;
+        var p = partitions[neighbor.partition];
+        if(p.snake != undefined) openPartitions[p.index] = p;
+      }
+    var indices = Object.keys(openPartitions);
+    if(indices.length == 0) {
+      var np = {
+        index: partitions.length,
+        snake: undefined
+      };
+      partitions.push(np);
+    }
+    else if(indices.length > 1) {}
+    else {
+      moveCell(cell, indices[0]);
+    }
+  }
+  /*
   snakes.forEach((snake, snakeIndex) => {
     let {
       id,
@@ -142,6 +180,7 @@ function GamePartitions(state) {
     var cell = grid[y].cells[x];
     keyPoints.push(cell);
   });
+  */
   
   Object.defineProperties(this, {
     states: { get: () => states, enumerable: true },
@@ -150,8 +189,10 @@ function GamePartitions(state) {
     partitions: { get: () => partitions, enumerable: true },
     partitionsBySnakeId: { get: () => partitionsBySnakeId, enumerable: true },
     grid: { get: () => grid, enumerable: true },
+    //index: { get: () => index, enumerable: true },
     keyPoints: { get: () => keyPoints, enumerable: true },
     moveCell: { get: () => moveCell },
+    reclaimCell: { get: () => reclaimCell },
   });
 }
 
@@ -206,10 +247,11 @@ module.exports = function SetupSnake(app, upload) {
       length
     } = state;
     
-    // get GamePartitions object
     var game = games[gameId + '_' + snakeId];
     game.states.push(state);
     game.bodies.push(state.body);
+    /*
+    // get GamePartitions object
     
     // check if each key point should stay in its previous partition or move
     game.keyPoints.forEach(cell => {
@@ -218,33 +260,22 @@ module.exports = function SetupSnake(app, upload) {
       var snake = snakes.filter(s => s.id == id)[0];
       if(snake) {
         if(!snake.body.some(s => s.x == cell.col && s.y == cell.row)) {
-          var openPartitions = {};
-          for(var a = -1; i < 2; a++)
-            for(var b = -1; b < 2; b++) {
-              if(a == 0 && b == 0) continue;
-              var R = game.grid[cell.row + a];
-              if(!R) continue;
-              var neighbor = R.cells[cell.col + b];
-              if(!neighbor) continue;
-              var p = game.partitions[neighbor.partition];
-              if(p.snake != undefined) openPartitions[p.index] = p;
-            }
-          var indices = Object.keys(openPartitions);
-          if(indices.length == 0) {
-            var np = {
-              index: game.partitions.length,
-              snake: undefined
-            };
-            game.partitions.push(np);
-          }
-          else if(indices.length > 1) {}
-          else {
-            game.moveCell(cell, indices[0]);
-          }
+          game.reclaimCell(cell);
         }
       }
     });
     // TODO: clear keyPoints and add current tails
+    // remove partitions for dead snakes
+    var snakesById = {};
+    snakes.forEach(s => snakesById[s.id] = s);
+    Object.keys(game.partitionsBySnakeId).forEach(id => {
+      if(!snakesById[id]) {
+        Object.keys(game.partitions[id].cells).forEach(index => {
+          game.reclaimCell(game.partitions[id].cells[index]);
+        });
+      }
+    });
+    */
     
     var moves = ['right','up','left','down'];
     
