@@ -48,7 +48,7 @@ class Battlesnake(object):
         move = random.choice(possible_moves)
 
         print(f"MOVE: {move}")
-        return {"move": move}
+        return {"move": "up"}
 
     @cherrypy.expose
     @cherrypy.tools.json_in()

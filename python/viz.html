@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://unpkg.com/konva@8/konva.min.js"></script>
+
+</head>
+<body>
+<div id="container"></div>
+
+
+<script>
+
+  // Make a request for a user with a given ID
+  axios.get('http://127.0.0.1:8080', {
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET,PUT,POST,DELETE,PATCH,OPTIONS'
+    }
+  })
+    .then(function (response) {
+      // handle success
+      console.log(response)
+    })
+    .catch(function (error) {
+      // handle error
+      console.log(error)
+    })
+    .then(function () {
+      // always executed
+    })
+
+  var stage = new Konva.Stage({
+        container: 'container',
+        width: 500,
+        height: 500,
+      });
+
+  var layer = new Konva.Layer();
+
+var rect1 = new Konva.Rect({
+        x: 0,
+        y: 0,
+        width: 50,
+        height: 50,
+        fill: 'green'
+      });
+      // add the shape to the layer
+      layer.add(rect1);
+
+      stage.add(layer);
+
+</script>
+</body>
+</html>
