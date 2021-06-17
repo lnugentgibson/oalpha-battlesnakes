@@ -57,8 +57,9 @@ module.exports = function MinHeap() {
   this.remove = function() {
     var t = heap[0];
     heap[0] = heap[heap.length - 1];
-    heap.slice(heap.length - 2, 1);
-    down(0);
+    heap.splice(heap.length - 1, 1);
+    if(heap.length > 0)
+      down(0);
     return t;
   };
   function print(i, p) {
@@ -68,9 +69,36 @@ module.exports = function MinHeap() {
     print(right(i), p + '  ');
   }
   this.print = function() {
+    console.log(`length: ${heap.length}`);
     print(0, '');
   };
   this.isEmpty = function() {
     return heap.length == 0;
+  };
+  this.length = function() {
+    return heap.length;
+  };
+  this.indexOf = function(v, f) {
+    var i;
+    if(heap.some((e, j) => {
+      if(f ? f.call(null, v, e[1]) : e[1] == v) {
+        i = j;
+        return true;
+      }
+      return false;
+    })) return i;
+    return -1;
+  };
+  this.setKey = function(i, k) {
+    if(heap[i] == undefined) {
+      throw {
+        length: heap.length,
+        i,
+        k
+      };
+    }
+    heap[i][0] = k;
+    up(i);
+    down(i);
   };
 };

@@ -7,54 +7,15 @@
 
 const MOVES = ['right','up','left','down'];
 const PRIORITY_MANDATORY = 0;
+const PRIORITY_HIGH = 1;
 const MOVE_STATE_FORBIDDEN = 0;
 const MOVE_STATE_RECOMMENDED = 1;
 
 const {
   //SnakeState,
-  GameState
+  GameState,
+  Dijkstra
 } = require('./common.js');
-const MinHeap = require("./heap.js");
-
-function Dijkstra(width, height, source, target, disallowed) {
-  var N = width * height;
-  
-  var dist = {
-    sid: 0
-  };
-  var prev = {};
-
-  var queue = new MinHeap();
-
-  for(var i = 0; i < N; i++) {
-    if(i != source) {
-      dist[i] = N;
-    }
-    queue.add(N, i);
-  }
-
-  while(!queue.isEmpty()) {
-    let [d, i] = queue.remove();
-    var D = d + 1;
-    [-1,1,-width,width].forEach(shift => {
-      var I = i + shift;
-      if(I < 0 || I >= N) return;
-      if(disallowed[I]) return;
-      if(D < dist[I]) {
-        dist[I] = D;
-        prev[I] = i;
-        queue.setKey(queue.indexOf(I), D);
-      }
-    });
-    if(i == target) break;
-  }
-  var path = [target];
-  while(target[0] != source) {
-    path.splice(0, 0, prev[path[0]]);
-  }
-
-  return {dist, prev, path};
-}
 
 function Gorgon(name, initializer, updater, recommendation) {
   var state = {};
@@ -211,9 +172,9 @@ function AvoidsStarving(k, tolerance) {
       width,
       height
     } = state;
+    this.recommendations = [];
     if(food.length == 0) return;
     let {x, y} = head;
-    this.recommendations = [];
     var closest = [];
     food.forEach(f => {
       let {
@@ -232,10 +193,14 @@ function AvoidsStarving(k, tolerance) {
         disallowed[cellIndex(width, cell)] = true;
       });
     });
-    if(closest[closest.length - 1].d < health + tolerance) {
-      var index = cellIndex(width, head);
-      let {path} = Dijkstra(width, height, index, cellIndex(width, closest[0]), disallowed);
-      var dif = path[1] - index;
+    if(health < closest[closest.length - 1].d + tolerance) {
+      var source = cellIndex(width, head);
+      delete disallowed[source];
+      var f = closest[0].f;
+      var target = cellIndex(width, f);
+      let {path} = Dijkstra(width, height, source, target, disallowed);
+      if(path[0] == undefined) return;
+      var dif = path[1] - source;
       var move;
       switch(dif) {
         case -1:
@@ -250,9 +215,17 @@ function AvoidsStarving(k, tolerance) {
         case width:
           move = 'up';
           break;
+        default:
+          move = 'right';
       }
       this.recommendations.push({
         move,
+        source,
+        target,
+        head: JSON.stringify(head),
+        food: JSON.stringify(f),
+        disallowed: Object.keys(disallowed).join(),
+        path: path.join(),
         recommendation: MOVE_STATE_RECOMMENDED,
         priority: PRIORITY_MANDATORY,
         shout: 'searching for food!'
@@ -271,10 +244,12 @@ module.exports = function SetupSnake(app, upload) {
     res.send({
       "apiversion": "1",
       "author": "oalpha",
-      "color" : "#663300",
-      "head" : "fang",
-      "tail" : "curled",
-       "version" : "0.0.2"
+      //"color" : "#663300",
+      //"color": "#111a00",
+      "color": "#213300",
+      "head": "fang",
+      "tail": "curled",
+       "version": "0.0.2"
     });
   });
   
@@ -294,7 +269,7 @@ module.exports = function SetupSnake(app, upload) {
         new AvoidWalls(),
         new AvoidCollision(),
         new AvoidPredation(),
-        new AvoidsStarving(3, 20)
+        new AvoidsStarving(3, 5)
       ],
       recommendations: []
     };
@@ -360,10 +335,10 @@ module.exports = function SetupSnake(app, upload) {
     var rec = moveset.filter(move => moves[move].state == MOVE_STATE_RECOMMENDED);
     if(rec.length > 0) decision = rec[0];
     else decision = moveset[0];
-    console.log({
-      recommendations,
-      decision
-    });
+    //console.log({
+    //  recommendations,
+    //  decision
+    //});
     
     // store move
     game.moves.push(decision);
