@@ -85,13 +85,16 @@ module.exports = function SetupSnake(app) {
     var model = models[gameId + '_' + snakeId];
 
     var input = [1 - Math.pow(1.1, -turn), snakes.length];
+    let { body, health } = state;
+    input = input.concat([health / 100, body.length / MAX_LENGTH]);
+    input = input.concat(_.times(MAX_LENGTH * 2, i => Math.floor(i / 2) < body.length ? (i % 2 > 0 ? body[Math.floor(i / 2)]['y'] / (height - 1) : body[Math.floor(i / 2)]['x'] / (width - 1)) : 0));
     snakes.forEach(s => {
       let { body, health } = s;
       input = input.concat([health / 100, body.length / MAX_LENGTH]);
       input = input.concat(_.times(MAX_LENGTH * 2, i => Math.floor(i / 2) < body.length ? (i % 2 > 0 ? body[Math.floor(i / 2)]['y'] / (height - 1) : body[Math.floor(i / 2)]['x'] / (width - 1)) : 0));
     });
-    if (snakes.length < MAX_SNAKES)
-      input = input.concat(_.times((2 * MAX_LENGTH + 1 + 1) * (MAX_SNAKES - snakes.length), () => 0));
+    if (snakes.length < MAX_SNAKES - 1)
+      input = input.concat(_.times((2 * MAX_LENGTH + 1 + 1) * ((MAX_LENGTH - 1) - snakes.length), () => 0));
 
     var moves = ['right', 'up', 'left', 'down'];
     tf.tidy(() => {

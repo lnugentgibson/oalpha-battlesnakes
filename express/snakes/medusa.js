@@ -7,7 +7,7 @@
 
 const MOVES = ['right','up','left','down'];
 const PRIORITY_MANDATORY = 1000;
-const PRIORITY_HIGH = 3;
+const PRIORITY_HIGH = 8;
 const PRIORITY_MID = 2;
 const PRIORITY_LOW = 1;
 const MOVE_STATE_FORBIDDEN = -1;
@@ -33,7 +33,7 @@ function Gorgon(name, initializer, updater, recommendation) {
     return recommendation.call(state);
   };
 }
-function AvoidWalls() {
+function AvoidWalls(tolerance) {
   Gorgon.call(this, "avoid-wall", undefined, state => {
     let {
       width,
@@ -47,24 +47,80 @@ function AvoidWalls() {
       priority: PRIORITY_MANDATORY,
       shout: 'cannot go right! There is a wall!'
     });
+    if(width - x - 1 < tolerance) {
+      this.recommendations.push({
+        move: 'left',
+        recommendation: MOVE_STATE_RECOMMENDED,
+        priority: PRIORITY_MID,
+        shout: 'go left! Avoiding the wall!'
+      });
+      this.recommendations.push({
+        move: 'right',
+        recommendation: MOVE_STATE_FORBIDDEN,
+        priority: PRIORITY_MID,
+        shout: 'cannot go right! There is a wall!'
+      });
+    }
     if(height - y - 1 == 0) this.recommendations.push({
       move: 'up',
       recommendation: MOVE_STATE_FORBIDDEN,
       priority: PRIORITY_MANDATORY,
       shout: 'cannot go up! There is a wall!'
     });
+    if(height - y - 1 < tolerance) {
+      this.recommendations.push({
+        move: 'down',
+        recommendation: MOVE_STATE_RECOMMENDED,
+        priority: PRIORITY_MID,
+        shout: 'go down! Avoiding the wall!'
+      });
+      this.recommendations.push({
+        move: 'up',
+        recommendation: MOVE_STATE_FORBIDDEN,
+        priority: PRIORITY_MID,
+        shout: 'cannot go up! There is a wall!'
+      });
+    }
     if(x == 0) this.recommendations.push({
       move: 'left',
       recommendation: MOVE_STATE_FORBIDDEN,
       priority: PRIORITY_MANDATORY,
       shout: 'cannot go left! There is a wall!'
     });
+    if(x < tolerance) {
+      this.recommendations.push({
+        move: 'right',
+        recommendation: MOVE_STATE_RECOMMENDED,
+        priority: PRIORITY_MID,
+        shout: 'go right! Avoiding the wall!'
+      });
+      this.recommendations.push({
+        move: 'left',
+        recommendation: MOVE_STATE_FORBIDDEN,
+        priority: PRIORITY_MID,
+        shout: 'cannot go left! There is a wall!'
+      });
+    }
     if(y == 0) this.recommendations.push({
       move: 'down',
       recommendation: MOVE_STATE_FORBIDDEN,
       priority: PRIORITY_MANDATORY,
       shout: 'cannot go down! There is a wall!'
     });
+    if(y < tolerance) {
+      this.recommendations.push({
+        move: 'up',
+        recommendation: MOVE_STATE_RECOMMENDED,
+        priority: PRIORITY_MID,
+        shout: 'go up! Avoiding the wall!'
+      });
+      this.recommendations.push({
+        move: 'down',
+        recommendation: MOVE_STATE_FORBIDDEN,
+        priority: PRIORITY_MID,
+        shout: 'cannot go down! There is a wall!'
+      });
+    }
   }, () => (this.recommendations));
 }
 function AvoidCollision() {
@@ -120,7 +176,7 @@ function AvoidPredation() {
     } = state;
     this.recommendations = [];
     snakes.forEach(snake => {
-      let { id, head: otherhead, otherlength } = snake;
+      let { id, head: otherhead, length: otherlength } = snake;
       if(id == snakeId) return;
       var dir = {
         x: otherhead.x - x,
@@ -165,7 +221,7 @@ function AvoidPredation() {
 function cellIndex(width, cell) {
   return cell.y * width + cell.x;
 }
-function AvoidsStarving(k, tolerance) {
+function AvoidsStarving(k, tolerances) {
   Gorgon.call(this, "avoid-starving", undefined, state => {
     let {
       head,
@@ -196,44 +252,51 @@ function AvoidsStarving(k, tolerance) {
         disallowed[cellIndex(width, cell)] = true;
       });
     });
-    if(health < closest[closest.length - 1].d + tolerance) {
-      var source = cellIndex(width, head);
-      delete disallowed[source];
-      var f = closest[0].f;
-      var target = cellIndex(width, f);
-      let {path} = Dijkstra(width, height, source, target, disallowed);
-      if(path[0] == undefined) return;
-      var dif = path[1] - source;
-      var move;
-      switch(dif) {
-        case -1:
-          move = 'left';
-          break;
-        case 1:
-          move = 'right';
-          break;
-        case -width:
-          move = 'down';
-          break;
-        case width:
-          move = 'up';
-          break;
-        default:
-          move = 'right';
-      }
-      this.recommendations.push({
-        move,
-        source,
-        target,
-        head: JSON.stringify(head),
-        food: JSON.stringify(f),
-        disallowed: Object.keys(disallowed).join(),
-        path: path.join(),
-        recommendation: MOVE_STATE_RECOMMENDED,
-        priority: PRIORITY_MANDATORY,
-        shout: 'searching for food!'
-      });
+    var source = cellIndex(width, head);
+    delete disallowed[source];
+    var f = closest[0].f;
+    var target = cellIndex(width, f);
+    let {path} = Dijkstra(width, height, source, target, disallowed);
+    if(path[0] == undefined) return;
+    var dif = path[1] - source;
+    var move;
+    switch(dif) {
+      case -1:
+        move = 'left';
+        break;
+      case 1:
+        move = 'right';
+        break;
+      case -width:
+        move = 'down';
+        break;
+      case width:
+        move = 'up';
+        break;
+      default:
+        move = 'right';
     }
+    Object.keys(tolerances).sort((a, b) => parseInt(b, 10) - parseInt(a, 10)).some(priority => {
+      var tolerance = tolerances[priority];
+      priority = parseInt(priority, 10);
+      if(health < closest[closest.length - 1].d + tolerance) {
+        this.recommendations.push({
+          move,
+          source,
+          target,
+          health,
+          head: JSON.stringify(head),
+          food: JSON.stringify(f),
+          disallowed: Object.keys(disallowed).join(),
+          path: path.join(),
+          recommendation: MOVE_STATE_RECOMMENDED,
+          priority,
+          shout: 'searching for food!'
+        });
+        return true;
+      }
+      return false;
+    });
   }, () => (this.recommendations));
 }
 function AvoidEntrapment(tolerance) {
@@ -309,6 +372,72 @@ function AvoidEntrapment(tolerance) {
 function HuntSmaller() {
   Gorgon.call(this, "avoid-predation", undefined, state => {
     let {
+      width,
+      height,
+      head,
+      snakes,
+      snakeId,
+      length
+    } = state;
+    let {x, y} = head;
+    this.recommendations = [];
+    var source = cellIndex(width, head);
+    var disallowed = {};
+    snakes.forEach(snake => {
+      snake.body.forEach(cell => {
+        disallowed[cellIndex(width, cell)] = true;
+      });
+    });
+    snakes.forEach(snake => {
+      let { id, head: otherhead, length: otherlength } = snake;
+      if(id == snakeId) return;
+      var dir = {
+        x: otherhead.x - x,
+        y: otherhead.y - y
+      };
+      if( dir.x + dir.y % 2 == 0 && otherlength < length) {
+        var target = cellIndex(width, otherhead);
+        delete disallowed[target];
+        let {path} = Dijkstra(width, height, source, target, disallowed);
+        if(path[0] == undefined) return;
+        var dif = path[1] - source;
+        var move;
+        switch(dif) {
+          case -1:
+            move = 'left';
+            break;
+          case 1:
+            move = 'right';
+            break;
+          case -width:
+            move = 'down';
+            break;
+          case width:
+            move = 'up';
+            break;
+          default:
+            move = 'right';
+        }
+        this.recommendations.push({
+          move,
+          source,
+          target,
+          head: JSON.stringify(head),
+          otherhead: JSON.stringify(otherhead),
+          disallowed: Object.keys(disallowed).join(),
+          path: path.join(),
+          recommendation: MOVE_STATE_RECOMMENDED,
+          priority: PRIORITY_HIGH,
+          shout: `hunting ${snake.name}!`
+        });
+        disallowed[target] = true;
+      }
+    });
+  }, () => (this.recommendations));
+}
+function EatPrey() {
+  Gorgon.call(this, "avoid-predation", undefined, state => {
+    let {
       head: {x, y},
       snakes,
       snakeId,
@@ -316,43 +445,43 @@ function HuntSmaller() {
     } = state;
     this.recommendations = [];
     snakes.forEach(snake => {
-      let { id, head: otherhead, otherlength } = snake;
+      let { id, head: otherhead, length: otherlength } = snake;
       if(id == snakeId) return;
       var dir = {
         x: otherhead.x - x,
         y: otherhead.y - y
       };
-      if( Math.abs(dir.x) + Math.abs(dir.y) != 2 || otherlength < length) return;
+      if( Math.abs(dir.x) + Math.abs(dir.y) != 2 || otherlength >= length) return;
       if(dir.x > 0) {
         this.recommendations.push({
           move: 'right',
-          recommendation: MOVE_STATE_FORBIDDEN,
+          recommendation: MOVE_STATE_RECOMMENDED,
           priority: PRIORITY_MANDATORY,
-          shout: 'cannot go right! I might get eaten!'
+          shout: `die ${snake.name}!`
         });
       }
       if(dir.x < 0) {
         this.recommendations.push({
           move: 'left',
-          recommendation: MOVE_STATE_FORBIDDEN,
+          recommendation: MOVE_STATE_RECOMMENDED,
           priority: PRIORITY_MANDATORY,
-          shout: 'cannot go left! I might get eaten!'
+          shout: `die ${snake.name}!`
         });
       }
       if(dir.y > 0) {
         this.recommendations.push({
           move: 'up',
-          recommendation: MOVE_STATE_FORBIDDEN,
+          recommendation: MOVE_STATE_RECOMMENDED,
           priority: PRIORITY_MANDATORY,
-          shout: 'cannot go up! I might get eaten!'
+          shout: `die ${snake.name}!`
         });
       }
       if(dir.y < 0) {
         this.recommendations.push({
           move: 'down',
-          recommendation: MOVE_STATE_FORBIDDEN,
+          recommendation: MOVE_STATE_RECOMMENDED,
           priority: PRIORITY_MANDATORY,
-          shout: 'cannot go down! I might get eaten!'
+          shout: `die ${snake.name}!`
         });
       }
     });
@@ -370,9 +499,9 @@ module.exports = function SetupSnake(prefix, cat, app, upload) {
       //"color" : "#663300",
       //"color": "#111a00",
       "color": "#213300",
-      "head": cat ? 'tiger-king' : "fang",
+      "head": cat ? 'tiger-king' : (true ? "evil" : "fang"),
       "tail": cat ? 'tiger-tail' : "curled",
-       "version": "0.0.2"
+       "version": "0.2.0"
     });
   });
   
@@ -389,11 +518,18 @@ module.exports = function SetupSnake(prefix, cat, app, upload) {
       bodies: [],
       moves: [],
       gorgons: [
-        new AvoidWalls(),
+        new AvoidWalls(2),
         new AvoidCollision(),
         new AvoidPredation(),
-        new AvoidsStarving(3, 5),
-        new AvoidEntrapment(10)
+        new AvoidsStarving(3, {
+          [PRIORITY_LOW]: 100,
+          [PRIORITY_MID]: 75,
+          [PRIORITY_HIGH]: 50,
+          [PRIORITY_MANDATORY]: 10
+        }),
+        new AvoidEntrapment(10),
+        new HuntSmaller(),
+        new EatPrey()
       ],
       recommendations: []
     };
@@ -414,6 +550,7 @@ module.exports = function SetupSnake(prefix, cat, app, upload) {
     // parse game state
     var state = new GameState(req.body);
     let {
+      turn,
       gameId,
       snakeId
     } = state;
@@ -461,9 +598,11 @@ module.exports = function SetupSnake(prefix, cat, app, upload) {
     //if(rec.length > 0) decision = rec[0];
     //else decision = moveset[0];
     console.log({
+      turn,
       snakeId,
       recommendations,
-      decision
+      decision,
+      moves
     });
     
     // store move
