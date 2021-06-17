@@ -361,9 +361,7 @@ function HuntSmaller() {
 
 var games = {};
 
-module.exports = function SetupSnake(app, upload) {
-  const prefix = 'medusa-0.1.0';
-  
+module.exports = function SetupSnake(prefix, cat, app, upload) {
   // respond with snake metadata to root request
   app.get(`/${prefix}/`, function (req, res) {
     res.send({
@@ -372,8 +370,8 @@ module.exports = function SetupSnake(app, upload) {
       //"color" : "#663300",
       //"color": "#111a00",
       "color": "#213300",
-      "head": "fang",
-      "tail": "curled",
+      "head": cat ? 'tiger-king' : "fang",
+      "tail": cat ? 'tiger-tail' : "curled",
        "version": "0.0.2"
     });
   });

@@ -198,17 +198,15 @@ function GamePartitions(state) {
 
 var games = {};
 
-module.exports = function SetupSnake(app, upload) {
-  const prefix = 'jormungand-0.1.0';
-  
+module.exports = function SetupSnake(prefix, cat, app, upload) {
   // respond with snake metadata to root request
   app.get(`/${prefix}/`, function (req, res) {
     res.send({
       "apiversion": "1",
       "author": "oalpha",
       "color" : "#ebcf34",
-      "head" : "shades",
-      "tail" : "bolt",
+      "head" : cat ? 'tiger-king' : "shades",
+      "tail" : cat ? 'tiger-tail' : "bolt",
        "version" : "0.0.2"
     });
   });
