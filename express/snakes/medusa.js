@@ -33,21 +33,33 @@ function Gorgon(name, initializer, updater, recommendation) {
     return recommendation.call(state);
   };
 }
-function AvoidWalls(tolerance) {
+function AvoidWalls(tolerance, safety) {
   Gorgon.call(this, "avoid-wall", undefined, state => {
     let {
       width,
       height,
-      head: {x, y}
+      head: {x, y},
+      snakes,
+      snakeId
     } = state;
     this.recommendations = [];
+    var minDist = width * height;
+    snakes.forEach(snake => {
+      let { id, head: otherhead } = snake;
+      if(id == snakeId) return;
+      var dir = {
+        x: otherhead.x - x,
+        y: otherhead.y - y
+      };
+      minDist = Math.min(minDist, Math.abs(dir.x) + Math.abs(dir.y));
+    });
     if(width - x - 1 == 0) this.recommendations.push({
       move: 'right',
       recommendation: MOVE_STATE_FORBIDDEN,
       priority: PRIORITY_MANDATORY,
       shout: 'cannot go right! There is a wall!'
     });
-    if(width - x - 1 < tolerance) {
+    if(width - x - 1 < tolerance && minDist < safety) {
       this.recommendations.push({
         move: 'left',
         recommendation: MOVE_STATE_RECOMMENDED,
@@ -67,7 +79,7 @@ function AvoidWalls(tolerance) {
       priority: PRIORITY_MANDATORY,
       shout: 'cannot go up! There is a wall!'
     });
-    if(height - y - 1 < tolerance) {
+    if(height - y - 1 < tolerance && minDist < safety) {
       this.recommendations.push({
         move: 'down',
         recommendation: MOVE_STATE_RECOMMENDED,
@@ -87,7 +99,7 @@ function AvoidWalls(tolerance) {
       priority: PRIORITY_MANDATORY,
       shout: 'cannot go left! There is a wall!'
     });
-    if(x < tolerance) {
+    if(x < tolerance && minDist < safety) {
       this.recommendations.push({
         move: 'right',
         recommendation: MOVE_STATE_RECOMMENDED,
@@ -107,7 +119,7 @@ function AvoidWalls(tolerance) {
       priority: PRIORITY_MANDATORY,
       shout: 'cannot go down! There is a wall!'
     });
-    if(y < tolerance) {
+    if(y < tolerance && minDist < safety) {
       this.recommendations.push({
         move: 'up',
         recommendation: MOVE_STATE_RECOMMENDED,
@@ -518,13 +530,13 @@ module.exports = function SetupSnake(prefix, cat, app, upload) {
       bodies: [],
       moves: [],
       gorgons: [
-        new AvoidWalls(2),
+        new AvoidWalls(2, 8),
         new AvoidCollision(),
         new AvoidPredation(),
         new AvoidsStarving(3, {
           [PRIORITY_LOW]: 100,
-          [PRIORITY_MID]: 75,
-          [PRIORITY_HIGH]: 50,
+          [PRIORITY_MID]: 90,
+          [PRIORITY_HIGH]: 70,
           [PRIORITY_MANDATORY]: 10
         }),
         new AvoidEntrapment(10),
