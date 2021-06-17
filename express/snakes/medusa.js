@@ -6,15 +6,18 @@
 //const _ = require('lodash');
 
 const MOVES = ['right','up','left','down'];
-const PRIORITY_MANDATORY = 0;
-const PRIORITY_HIGH = 1;
-const MOVE_STATE_FORBIDDEN = 0;
+const PRIORITY_MANDATORY = 1000;
+const PRIORITY_HIGH = 3;
+const PRIORITY_MID = 2;
+const PRIORITY_LOW = 1;
+const MOVE_STATE_FORBIDDEN = -1;
 const MOVE_STATE_RECOMMENDED = 1;
 
 const {
   //SnakeState,
   GameState,
-  Dijkstra
+  Dijkstra,
+  FloodFill
 } = require('./common.js');
 
 function Gorgon(name, initializer, updater, recommendation) {
@@ -128,7 +131,7 @@ function AvoidPredation() {
         this.recommendations.push({
           move: 'right',
           recommendation: MOVE_STATE_FORBIDDEN,
-          priority: PRIORITY_MANDATORY,
+          priority: PRIORITY_HIGH,
           shout: 'cannot go right! I might get eaten!'
         });
       }
@@ -136,7 +139,7 @@ function AvoidPredation() {
         this.recommendations.push({
           move: 'left',
           recommendation: MOVE_STATE_FORBIDDEN,
-          priority: PRIORITY_MANDATORY,
+          priority: PRIORITY_HIGH,
           shout: 'cannot go left! I might get eaten!'
         });
       }
@@ -144,7 +147,7 @@ function AvoidPredation() {
         this.recommendations.push({
           move: 'up',
           recommendation: MOVE_STATE_FORBIDDEN,
-          priority: PRIORITY_MANDATORY,
+          priority: PRIORITY_HIGH,
           shout: 'cannot go up! I might get eaten!'
         });
       }
@@ -152,7 +155,7 @@ function AvoidPredation() {
         this.recommendations.push({
           move: 'down',
           recommendation: MOVE_STATE_FORBIDDEN,
-          priority: PRIORITY_MANDATORY,
+          priority: PRIORITY_HIGH,
           shout: 'cannot go down! I might get eaten!'
         });
       }
@@ -233,6 +236,128 @@ function AvoidsStarving(k, tolerance) {
     }
   }, () => (this.recommendations));
 }
+function AvoidEntrapment(tolerance) {
+  Gorgon.call(this, "avoid-entrapment", undefined, state => {
+    let {
+      width,
+      height,
+      head,
+      snakes
+    } = state;
+    this.recommendations = [];
+    var disallowed = {};
+    snakes.forEach(snake => {
+      snake.body.forEach(cell => {
+        disallowed[cellIndex(width, cell)] = true;
+      });
+    });
+    var index = cellIndex(width, head);
+    var moves = [-1,1,-width,width].map(s => index + s).filter(i => i >= 0 && i < width * height).filter(i => !disallowed[i]);
+    if(moves.length < 2) return;
+    var partitions = moves.map(i => FloodFill(width, height, i, disallowed));
+    var sizes = partitions.map(p => p.length);
+    var minIndex = sizes.reduce((a, c, i) => c < sizes[a] ? i : a, 0);
+    var maxIndex = sizes.reduce((a, c, i) => c > sizes[a] ? i : a, 0);
+    
+    if(sizes[maxIndex] - sizes[minIndex] == 0) return;
+    moves.forEach((target, i) => {
+      var size = sizes[i];
+      var move;
+      switch(target - index) {
+        case -1:
+          move = 'left';
+          break;
+        case 1:
+          move = 'right';
+          break;
+        case -width:
+          move = 'down';
+          break;
+        case width:
+          move = 'up';
+          break;
+        default:
+          move = 'right';
+      }
+      var recommendation, priority;
+      if(size < tolerance) {
+        recommendation = MOVE_STATE_FORBIDDEN;
+        priority = PRIORITY_HIGH;
+      }
+      else if(i == minIndex) {
+        recommendation = MOVE_STATE_FORBIDDEN;
+        priority = PRIORITY_LOW;
+      }
+      else if(i == maxIndex) {
+        recommendation = MOVE_STATE_RECOMMENDED;
+        priority = PRIORITY_LOW;
+      }
+      else return;
+      this.recommendations.push({
+        move,
+        size,
+        target,
+        head: JSON.stringify(head),
+        disallowed: Object.keys(disallowed).join(),
+        recommendation,
+        priority,
+        shout: 'avoiding traps!'
+      });
+    });
+  }, () => (this.recommendations));
+}
+function HuntSmaller() {
+  Gorgon.call(this, "avoid-predation", undefined, state => {
+    let {
+      head: {x, y},
+      snakes,
+      snakeId,
+      length
+    } = state;
+    this.recommendations = [];
+    snakes.forEach(snake => {
+      let { id, head: otherhead, otherlength } = snake;
+      if(id == snakeId) return;
+      var dir = {
+        x: otherhead.x - x,
+        y: otherhead.y - y
+      };
+      if( Math.abs(dir.x) + Math.abs(dir.y) != 2 || otherlength < length) return;
+      if(dir.x > 0) {
+        this.recommendations.push({
+          move: 'right',
+          recommendation: MOVE_STATE_FORBIDDEN,
+          priority: PRIORITY_MANDATORY,
+          shout: 'cannot go right! I might get eaten!'
+        });
+      }
+      if(dir.x < 0) {
+        this.recommendations.push({
+          move: 'left',
+          recommendation: MOVE_STATE_FORBIDDEN,
+          priority: PRIORITY_MANDATORY,
+          shout: 'cannot go left! I might get eaten!'
+        });
+      }
+      if(dir.y > 0) {
+        this.recommendations.push({
+          move: 'up',
+          recommendation: MOVE_STATE_FORBIDDEN,
+          priority: PRIORITY_MANDATORY,
+          shout: 'cannot go up! I might get eaten!'
+        });
+      }
+      if(dir.y < 0) {
+        this.recommendations.push({
+          move: 'down',
+          recommendation: MOVE_STATE_FORBIDDEN,
+          priority: PRIORITY_MANDATORY,
+          shout: 'cannot go down! I might get eaten!'
+        });
+      }
+    });
+  }, () => (this.recommendations));
+}
 
 var games = {};
 
@@ -269,7 +394,8 @@ module.exports = function SetupSnake(app, upload) {
         new AvoidWalls(),
         new AvoidCollision(),
         new AvoidPredation(),
-        new AvoidsStarving(3, 5)
+        new AvoidsStarving(3, 5),
+        new AvoidEntrapment(10)
       ],
       recommendations: []
     };
@@ -304,10 +430,10 @@ module.exports = function SetupSnake(app, upload) {
     });
     
     var moves = {
-      right: {},
-      up: {},
-      left: {},
-      down: {}
+      right: {weight: 0},
+      up: {weight: 0},
+      left: {weight: 0},
+      down: {weight: 0}
     };
     var shouts = [
       'Look into my eyes!'
@@ -322,23 +448,25 @@ module.exports = function SetupSnake(app, upload) {
           shout
         } = recommendation;
         recommendations.push(recommendation);
-        if(priority == PRIORITY_MANDATORY) {
-          moves[move].state = moveState;
-        }
+        moves[move].weight += moveState * priority;
+        //if(priority == PRIORITY_MANDATORY) {
+        //  moves[move].state = moveState;
+        //}
         shouts.push(shout);
       });
     });
     game.recommendations.push(recommendations);
     
-    var decision;
-    var moveset = MOVES.filter(move => moves[move].state != MOVE_STATE_FORBIDDEN);
-    var rec = moveset.filter(move => moves[move].state == MOVE_STATE_RECOMMENDED);
-    if(rec.length > 0) decision = rec[0];
-    else decision = moveset[0];
-    //console.log({
-    //  recommendations,
-    //  decision
-    //});
+    var decision = Object.keys(moves).reduce((m,c) => moves[c].weight > moves[m].weight ? c : m,'right');
+    //var moveset = MOVES.filter(move => moves[move].state != MOVE_STATE_FORBIDDEN);
+    //var rec = moveset.filter(move => moves[move].state == MOVE_STATE_RECOMMENDED);
+    //if(rec.length > 0) decision = rec[0];
+    //else decision = moveset[0];
+    console.log({
+      snakeId,
+      recommendations,
+      decision
+    });
     
     // store move
     game.moves.push(decision);

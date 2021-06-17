@@ -106,8 +106,6 @@ function Dijkstra(width, height, source, target, disallowed, debug) {
       }
       if(id % width == 0 && shift == -1) return;
       if(id % width == width - 1 && shift == 1) return;
-      if(id < width && shift == -width) return;
-      if(Math.floor(id / width) == height - 1 && shift == width) return;
       if(I < 0 || I >= N) {
         //console.log('\tindex out of bounds');
         return;
@@ -141,8 +139,38 @@ function Dijkstra(width, height, source, target, disallowed, debug) {
   return {dist, prev, path};
 }
 
+function FloodFill(width, height, source, disallowed) {
+  var N = width * height;
+  
+  var cells = [], index = {};
+  var queue = [source];
+  
+  while(queue.length > 0) {
+    var cell = queue.splice(0, 1)[0];
+    if(index[cell]) continue;
+    cells.push(cell);
+    index[cell] = true;
+    [-1,1,-width,width].forEach(shift => {
+      var neighbor = cell + shift;
+      if(index[neighbor]) return;
+      if(neighbor < 0 || neighbor > N) return;
+      if(cell % width == 0 && shift == -1) return;
+      if(cell % width == width - 1 && shift == 1) return;
+      if(disallowed[neighbor]) return;
+      queue.push(neighbor);
+    });
+  }
+  
+  return {
+    cells,
+    index,
+    length: cells.length
+  };
+}
+
 module.exports = {
   SnakeState,
   GameState,
-  Dijkstra
+  Dijkstra,
+  FloodFill
 };
