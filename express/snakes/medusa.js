@@ -428,7 +428,7 @@ function AvoidPredation() {
         recommendations.push({
           move: 'right',
           recommendation: MOVE_STATE_FORBIDDEN,
-          priority: PRIORITY_HIGH,
+          priority: PRIORITY_HIGH + 5,
           shout: `cannot go right! I might get eaten by ${name}!`
         });
       }
@@ -436,7 +436,7 @@ function AvoidPredation() {
         recommendations.push({
           move: 'left',
           recommendation: MOVE_STATE_FORBIDDEN,
-          priority: PRIORITY_HIGH,
+          priority: PRIORITY_HIGH + 5,
           shout: `cannot go left! I might get eaten by ${name}!`
         });
       }
@@ -444,7 +444,7 @@ function AvoidPredation() {
         recommendations.push({
           move: 'up',
           recommendation: MOVE_STATE_FORBIDDEN,
-          priority: PRIORITY_HIGH,
+          priority: PRIORITY_HIGH + 5,
           shout: `cannot go up! I might get eaten by ${name}!`
         });
       }
@@ -452,7 +452,7 @@ function AvoidPredation() {
         recommendations.push({
           move: 'down',
           recommendation: MOVE_STATE_FORBIDDEN,
-          priority: PRIORITY_HIGH,
+          priority: PRIORITY_HIGH + 5,
           shout: `cannot go down! I might get eaten by ${name}!`
         });
       }
@@ -563,15 +563,15 @@ function AvoidEntrapment(tolerance) {
       var recommendation, priority;
       if(size < tolerance) {
         recommendation = MOVE_STATE_FORBIDDEN;
-        priority = PRIORITY_HIGH;
+        priority = PRIORITY_HIGH + 5;
       }
       else if(i == minIndex) {
         recommendation = MOVE_STATE_FORBIDDEN;
-        priority = PRIORITY_LOW;
+        priority = PRIORITY_LOW + 5;
       }
       else if(i == maxIndex) {
         recommendation = MOVE_STATE_RECOMMENDED;
-        priority = PRIORITY_LOW;
+        priority = PRIORITY_LOW + 5;
       }
       else return;
       recommendations.push({
@@ -600,7 +600,7 @@ function HuntSmaller() {
     var recommendations = [];
     var disallowed = Object.assign({}, occupiedCells);
     snakes.forEach(snake => {
-      let { snake: {start: target}, d, length: otherlength } = snake;
+      let { snake: {start: target, length: otherlength}, d } = snake;
       if( d % 2 == 0 && otherlength < length) {
         delete disallowed[target];
         let {path} = Dijkstra(width, height, source, target, disallowed);
@@ -649,14 +649,14 @@ function EatPrey() {
     } = state;
     var recommendations = [];
     snakes.forEach(snake => {
-      let { d, D, length: otherlength } = snake;
+      let { snake: {name, length: otherlength}, d, D } = snake;
       if( d != 2 || otherlength >= length) return;
       if(D.x > 0) {
         recommendations.push({
           move: 'right',
           recommendation: MOVE_STATE_RECOMMENDED,
           priority: PRIORITY_MANDATORY,
-          shout: `die ${snake.name}!`
+          shout: `die ${name}!`
         });
       }
       if(D.x < 0) {
@@ -664,7 +664,7 @@ function EatPrey() {
           move: 'left',
           recommendation: MOVE_STATE_RECOMMENDED,
           priority: PRIORITY_MANDATORY,
-          shout: `die ${snake.name}!`
+          shout: `die ${name}!`
         });
       }
       if(D.y > 0) {
@@ -672,7 +672,7 @@ function EatPrey() {
           move: 'up',
           recommendation: MOVE_STATE_RECOMMENDED,
           priority: PRIORITY_MANDATORY,
-          shout: `die ${snake.name}!`
+          shout: `die ${name}!`
         });
       }
       if(D.y < 0) {
@@ -680,7 +680,7 @@ function EatPrey() {
           move: 'down',
           recommendation: MOVE_STATE_RECOMMENDED,
           priority: PRIORITY_MANDATORY,
-          shout: `die ${snake.name}!`
+          shout: `die ${name}!`
         });
       }
     });
