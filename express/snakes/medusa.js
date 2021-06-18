@@ -114,7 +114,7 @@ function SnakeState(snake_0, game_0) {
   });
 }
 
-function Controller(data_0, gorgons) {
+function Controller(data_0, gorgons, debug) {
   var id;
   
   var width, height, N;
@@ -210,13 +210,14 @@ function Controller(data_0, gorgons) {
     recommendations.push(rs);
     
     var decision = Object.keys(moveset).reduce((m,c) => moveset[c].weight > moveset[m].weight ? c : m,'right');
-    console.log({
-      turn,
-      snakeId: you.id,
-      rs,
-      decision,
-      moveset
-    });
+    if(debug)
+      console.log({
+        turn,
+        snakeId: you.id,
+        rs,
+        decision,
+        moveset
+      });
     
     // store move
     moves.push(decision);
@@ -846,7 +847,7 @@ function AvoidSqueeze() {
 
 var games = {};
 
-module.exports = function SetupSnake(prefix, cat, app, upload) {
+module.exports = function SetupSnake(prefix, cat, app, upload, debug) {
   // respond with snake metadata to root request
   app.get(`/${prefix}/`, function (req, res) {
     res.send({
@@ -881,7 +882,7 @@ module.exports = function SetupSnake(prefix, cat, app, upload) {
       new EatPrey(),
       new SqueezeEnemies(),
       new AvoidSqueeze()
-    ]);
+    ], debug);
     
     games[game.id + '_' + game.you.id] = game;
     console.log(`new game: ${game.id}`);

@@ -31,6 +31,7 @@ require('./snakes/hydra.js')(app, upload);
 require('./snakes/medusa.js')('medusa-0.1.0', false, app, upload);
 require('./snakes/medusa.js')('medusa', false, app, upload);
 require('./snakes/medusa.js')('meowdusa', true, app, upload);
+require('./snakes/medusa.js')('medusa-debug', false, app, upload, true);
 
 var server = require('http').createServer(app);
 server.listen(port);
