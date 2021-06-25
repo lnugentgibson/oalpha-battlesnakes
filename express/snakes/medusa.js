@@ -2,7 +2,7 @@
  * This snake uses a state machine.
  */
 
-//const fs = require('fs');
+const fs = require('fs');
 //const _ = require('lodash');
 
 const MOVES = ['right','up','left','down'];
@@ -267,23 +267,42 @@ function Controller(data_0, gorgons, debug) {
   }
   
   function save() {
-    
+    fs.writeFile(`games/medusa/${id + '_' + you.id}.json`, JSON.stringify(this, null, 2), 'utf8', err => {
+      if(err) {
+        console.error(err);
+      }
+    });
+    fs.writeFile(`games/medusa/${id + '_' + you.id}_states.json`, JSON.stringify(states, null, 2), 'utf8', err => {
+      if(err) {
+        console.error(err);
+      }
+    });
+    fs.writeFile(`games/medusa/${id + '_' + you.id}_bodies.json`, JSON.stringify(bodies, null, 2), 'utf8', err => {
+      if(err) {
+        console.error(err);
+      }
+    });
+    fs.writeFile(`games/medusa/${id + '_' + you.id}_moves.json`, JSON.stringify(moves, null, 2), 'utf8', err => {
+      if(err) {
+        console.error(err);
+      }
+    });
   }
   
   Object.defineProperties(this, {
-    id: { get: () => id },
-    width: { get: () => width },
-    height: { get: () => height },
-    snakes: { get: () => snakes },
-    snakesById: { get: () => snakesById },
-    minSnakeDist: { get: () => minSnakeDist },
-    occupiedCells: { get: () => occupiedCells },
-    you: { get: () => you },
-    food: { get: () => food },
-    foodCellIndex: { get: () => foodCellIndex },
-    turn: { get: () => turn },
-    update: { get: () => update },
-    save: { get: () => save }
+    id: { get: () => id, enumerable: true },
+    width: { get: () => width, enumerable: true },
+    height: { get: () => height, enumerable: true },
+    snakes: { get: () => snakes, enumerable: true },
+    snakesById: { get: () => snakesById, enumerable: true },
+    minSnakeDist: { get: () => minSnakeDist, enumerable: true },
+    occupiedCells: { get: () => occupiedCells, enumerable: true },
+    you: { get: () => you, enumerable: true },
+    food: { get: () => food, enumerable: true },
+    foodCellIndex: { get: () => foodCellIndex, enumerable: true },
+    turn: { get: () => turn, enumerable: true },
+    update: { get: () => update, enumerable: true },
+    save: { get: () => save, enumerable: true }
   });
 }
 
@@ -405,6 +424,7 @@ function AvoidCollision() {
     var recommendations = [];
     var segment, snake;
     function checkTail(segment) {
+      return true;
       if(!segment.tail || turn < 3) return true;
       var snake = segment.snake;
       let {start} = snake;
@@ -847,19 +867,31 @@ function AvoidSqueeze() {
 
 var games = {};
 
-module.exports = function SetupSnake(prefix, cat, app, upload, debug) {
+module.exports = function SetupSnake(prefix, allegiance, app, upload, debug) {
   // respond with snake metadata to root request
   app.get(`/${prefix}/`, function (req, res) {
-    res.send({
+    var meta = {
       "apiversion": "1",
       "author": "oalpha",
       //"color" : "#663300",
       //"color": "#111a00",
       "color": "#213300",
-      "head": cat ? 'tiger-king' : (true ? "evil" : "fang"),
-      "tail": cat ? 'tiger-tail' : "curled",
+      "head": (true ? "evil" : "fang"),
+      "tail": "curled",
        "version": "0.2.0"
-    });
+    };
+    switch(allegiance) {
+      case 'leviathanyans':
+        meta.head = 'tiger-king';
+        meta.tail = 'tiger-tail';
+        break;
+      case 'house-of-joe':
+        meta.head = 'sand-worm';
+        meta.tail = 'sharp';
+        meta.color = '#930318';
+        break;
+    }
+    res.send(meta);
   });
   
   // creates the GamePartitions object for this game and stores it in games
@@ -884,11 +916,13 @@ module.exports = function SetupSnake(prefix, cat, app, upload, debug) {
       new AvoidSqueeze()
     ], debug);
     
-    games[game.id + '_' + game.you.id] = game;
-    console.log(`new game: ${game.id}`);
+    var Game = games[game.id];
+    if(!Game) Game = games[game.id] = {};
+    Game[game.you.id] = game;
+    console.log(`new game: ${prefix}-${game.id}`);
     var ids = Object.keys(games);
-    console.log(`# games: ${ids.length}`);
-    console.log(`games: ${ids.join(',\n\t')}`);
+    console.log(`# games: ${prefix}-${ids.length}`);
+    //console.log(`games: ${ids.join(',\n\t')}`);
     
     res.send({
       "ping": "pong"
@@ -904,7 +938,7 @@ module.exports = function SetupSnake(prefix, cat, app, upload, debug) {
     } = state;
     
     // update game
-    var game = games[gameId + '_' + snakeId];
+    var game = games[gameId][snakeId];
     game.update(state, res);
   });
   
@@ -912,12 +946,31 @@ module.exports = function SetupSnake(prefix, cat, app, upload, debug) {
     var state = req.body;
     let {
       game: {id: gameId},
-      you: {id: snakeId}
+      you,
+      board: {snakes}
     } = state;
     
     // update game
-    var game = games[gameId + '_' + snakeId];
-    game.save();
+    var Game = games[gameId];
+    if(Game) {
+      var ids = Object.keys(Game);
+      var index = {};
+      snakes.forEach(s => {
+        index[s.id] = true;
+      });
+      ids.filter(id => !index[id]).forEach(id => {
+        var game = Game[id];
+        game.save();
+        delete Game[id];
+      });
+      if(you) {
+        var id = you.id;
+        var game = Game[id];
+        game.save();
+        delete Game[id];
+      }
+      if(Object.keys(Game).length == 0) delete games[gameId];
+    }
     
     res.send({
       "ping": "pong"

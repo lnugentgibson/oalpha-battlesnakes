@@ -28,10 +28,11 @@ require('./snakes/jormungand.js')('roarmungand', true, app, upload);
 // Add hydra snake
 require('./snakes/hydra.js')(app, upload);
 // Add medusa snake
-require('./snakes/medusa.js')('medusa-0.1.0', false, app, upload);
-require('./snakes/medusa.js')('medusa', false, app, upload);
-require('./snakes/medusa.js')('meowdusa', true, app, upload);
-require('./snakes/medusa.js')('medusa-debug', false, app, upload, true);
+require('./snakes/medusa.js')('medusa-0.1.0', 'none', app, upload);
+require('./snakes/medusa.js')('medusa', 'none', app, upload);
+require('./snakes/medusa.js')('meowdusa', 'leviathanyans', app, upload);
+require('./snakes/medusa.js')('medusa-joe', 'house-of-joe', app, upload);
+require('./snakes/medusa.js')('medusa-debug', 'none', app, upload, true);
 
 var server = require('http').createServer(app);
 server.listen(port);

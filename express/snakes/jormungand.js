@@ -220,11 +220,13 @@ module.exports = function SetupSnake(prefix, cat, app, upload) {
     } = state;
     var game = new GamePartitions(state);
     
-    games[gameId + '_' + snakeId] = game;
-    console.log(`new game: ${gameId}`);
+    var Game = games[gameId];
+    if(!Game) Game = games[gameId] = {};
+    Game[snakeId] = game;
+    console.log(`new game: ${prefix}-${gameId}`);
     var ids = Object.keys(games);
-    console.log(`# games: ${ids.length}`);
-    console.log(`games: ${ids.join(',\n\t')}`);
+    console.log(`# games: ${prefix}-${ids.length}`);
+    //console.log(`games: ${ids.join(',\n\t')}`);
     
     res.send({
       "ping": "pong"
@@ -245,7 +247,7 @@ module.exports = function SetupSnake(prefix, cat, app, upload) {
       length
     } = state;
     
-    var game = games[gameId + '_' + snakeId];
+    var game = games[gameId][snakeId];
     game.states.push(state);
     game.bodies.push(state.body);
     /*
@@ -358,28 +360,37 @@ module.exports = function SetupSnake(prefix, cat, app, upload) {
       gameId,
       snakeId
     } = state;
-    var game = games[gameId + '_' + snakeId];
+    //var game = games[gameId + '_' + snakeId];
     
-    fs.writeFile(`games/${gameId + '_' + snakeId}.json`, JSON.stringify({state, game}, null, 2), 'utf8', err => {
-      if(err) {
-        console.error(err);
+    var Game = games[gameId];
+    if(Game) {
+      if(snakeId) {
+        var game = Game[snakeId];
+        fs.writeFile(`games/jormungand/${gameId + '_' + snakeId}.json`, JSON.stringify({state, game}, null, 2), 'utf8', err => {
+          if(err) {
+            console.error(err);
+          }
+        });
+        fs.writeFile(`games/jormungand/${gameId + '_' + snakeId}_states.json`, JSON.stringify(game.states, null, 2), 'utf8', err => {
+          if(err) {
+            console.error(err);
+          }
+        });
+        fs.writeFile(`games/jormungand/${gameId + '_' + snakeId}_bodies.json`, JSON.stringify(game.bodies, null, 2), 'utf8', err => {
+          if(err) {
+            console.error(err);
+          }
+        });
+        fs.writeFile(`games/jormungand/${gameId + '_' + snakeId}_moves.json`, JSON.stringify(game.moves, null, 2), 'utf8', err => {
+          if(err) {
+            console.error(err);
+          }
+        });
+        delete Game[snakeId];
       }
-    });
-    fs.writeFile(`games/${gameId + '_' + snakeId}_states.json`, JSON.stringify(game.states, null, 2), 'utf8', err => {
-      if(err) {
-        console.error(err);
-      }
-    });
-    fs.writeFile(`games/${gameId + '_' + snakeId}_bodies.json`, JSON.stringify(game.bodies, null, 2), 'utf8', err => {
-      if(err) {
-        console.error(err);
-      }
-    });
-    fs.writeFile(`games/${gameId + '_' + snakeId}_moves.json`, JSON.stringify(game.moves, null, 2), 'utf8', err => {
-      if(err) {
-        console.error(err);
-      }
-    });
+      if(Object.keys(Game).length == 0) delete games[gameId];
+    }
+    
     
     res.send({
       "ping": "pong"
