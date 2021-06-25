@@ -966,7 +966,7 @@ module.exports = function SetupSnake(prefix, allegiance, app, upload, debug) {
       if(you) {
         var id = you.id;
         var game = Game[id];
-        game.save();
+        if(game) game.save();
         delete Game[id];
       }
       if(Object.keys(Game).length == 0) delete games[gameId];
