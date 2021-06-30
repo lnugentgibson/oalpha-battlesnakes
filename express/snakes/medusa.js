@@ -127,6 +127,9 @@ function Controller(data_0, gorgons, debug) {
   var food;
   var foodCellIndex;
   
+  var hazards;
+  var hazardCellIndex;
+  
   var occupiedCells;
   
   var turn;
@@ -191,6 +194,25 @@ function Controller(data_0, gorgons, debug) {
       };
       foodCellIndex[index] = F;
       return F;
+    });
+    
+    hazardCellIndex = {};
+    hazards = data.board.hazards.map(h => {
+      var D = {
+        x: h.x - you.x,
+        y: h.y - you.y
+      };
+      var d = Math.abs(D.x) + Math.abs(D.y);
+      var index = cellIndex(width, h);
+      var H = {
+        x: h.x,
+        y: h.y,
+        index,
+        D,
+        d
+      };
+      foodCellIndex[index] = H;
+      return H;
     });
     
     var rs = [];
@@ -300,6 +322,8 @@ function Controller(data_0, gorgons, debug) {
     you: { get: () => you, enumerable: true },
     food: { get: () => food, enumerable: true },
     foodCellIndex: { get: () => foodCellIndex, enumerable: true },
+    hazards: { get: () => hazards, enumerable: true },
+    hazardCellIndex: { get: () => hazardCellIndex, enumerable: true },
     turn: { get: () => turn, enumerable: true },
     update: { get: () => update, enumerable: true },
     save: { get: () => save, enumerable: true }
@@ -532,6 +556,7 @@ function AvoidsStarving(k, tolerances, startup) {
     let {
       turn,
       food,
+      hazardCellIndex,
       width,
       height,
       occupiedCells,
@@ -540,33 +565,72 @@ function AvoidsStarving(k, tolerances, startup) {
     var recommendations = [];
     if(food.length == 0) return [];
     var closest = food.map(f => f);
-    closest.sort((a, b) => a.d - b.d);
+    //closest.sort((a, b) => a.d - b.d);
     if(closest.length > k) closest = closest.slice(0, k);
     
     var disallowed = Object.assign({}, occupiedCells);
     delete disallowed[start];
-    var f = closest[0];
-    var target = f.index;
-    let {path} = Dijkstra(width, height, start, target, disallowed);
-    if(path[0] == undefined) return [];
-    var dif = path[1] - start;
-    var move;
-    switch(dif) {
-      case -1:
-        move = 'left';
-        break;
-      case 1:
-        move = 'right';
-        break;
-      case -width:
-        move = 'down';
-        break;
-      case width:
-        move = 'up';
-        break;
-      default:
-        move = 'right';
-    }
+    var paths = closest.map(f => {
+      var target = f.index;
+      let {path} = Dijkstra(width, height, start, target, disallowed);
+      if(path[0] == undefined) return;
+      var dif = path[1] - start;
+      var move;
+      switch(dif) {
+        case -1:
+          move = 'left';
+          break;
+        case 1:
+          move = 'right';
+          break;
+        case -width:
+          move = 'down';
+          break;
+        case width:
+          move = 'up';
+          break;
+        default:
+          move = 'right';
+      }
+      var d = f.d + path.filter(c => hazardCellIndex[c]).length * 15;
+      return {
+        path,
+        f,
+        target,
+        move,
+        d
+      };
+    }).filter(p => p);
+    if(paths.length == 0) return [];
+    paths.sort((a, b) => a.d - b.d);
+    //let {path} = Dijkstra(width, height, start, target, disallowed);
+    //if(path[0] == undefined) return [];
+    //var dif = path[1] - start;
+    //var move;
+    //switch(dif) {
+    //  case -1:
+    //    move = 'left';
+    //    break;
+    //  case 1:
+    //    move = 'right';
+    //    break;
+    //  case -width:
+    //    move = 'down';
+    //    break;
+    //  case width:
+    //    move = 'up';
+    //    break;
+    //  default:
+    //    move = 'right';
+    //}
+    var minpath = paths.reduce((p,c) => c.d < p.d ? c : p, paths[0]);
+    let {
+      path,
+      f,
+      target,
+      move,
+      d
+    } = minpath;
     if(turn < startup)
       recommendations.push({
         move,
@@ -585,7 +649,7 @@ function AvoidsStarving(k, tolerances, startup) {
       Object.keys(tolerances).sort((a, b) => parseInt(b, 10) - parseInt(a, 10)).some(priority => {
         var tolerance = tolerances[priority];
         priority = parseInt(priority, 10);
-        if(health < closest[closest.length - 1].d + tolerance) {
+        if(health < paths[paths.length - 1].d + tolerance) {
           recommendations.push({
             move,
             start,

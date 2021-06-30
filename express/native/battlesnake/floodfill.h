@@ -1,0 +1,1 @@
+void FloodFill(unsigned width, unsigned height, unsigned source, std::set<unsigned> disallowed);
