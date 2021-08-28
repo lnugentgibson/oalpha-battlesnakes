@@ -1,4 +1,4 @@
-#include "nstate.h"
+#include "n_state.h"
 
 Napi::FunctionReference NState::constructor;
 

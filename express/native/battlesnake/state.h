@@ -1,3 +1,6 @@
+#ifndef BATTLESNAKE_STATE_H
+#define BATTLESNAKE_STATE_H
+
 #include <list>
 #include <set>
 #include <string>
@@ -107,7 +110,7 @@ class Snake : public ObjectSet {
 
 class State {
  public:
-  State(std::string id, unsigned width, unsigned height) : id_(id), turn_(0), board_(new Board(width, height)) {}
+  State(std::string id, unsigned width, unsigned height) : id_(id), board_(new Board(width, height)), turn_(0) {}
   
   std::string id() const { return id_; }
   unsigned turn() const { return turn_; }
@@ -127,3 +130,5 @@ class State {
   unsigned turn_;
   Snake *you_;
 };
+
+#endif // BATTLESNAKE_STATE_H

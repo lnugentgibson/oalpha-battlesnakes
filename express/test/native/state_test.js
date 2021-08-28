@@ -2,7 +2,7 @@ const {
   expect
 } = require('chai');
 
-const lib = require("../../snakes/state.js");
+const lib = require("../../snakes/native.js");
 let { NState } = lib;
 
 describe('NState', function() {
